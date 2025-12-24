@@ -38,9 +38,34 @@ logger = logging.getLogger("auction-bot")
 # =====================
 # DATABASE
 # =====================
-DB = sqlite3.connect("auction.db", check_same_thread=False)
-DB.execute(open("schema.sql", "r", encoding="utf-8").read())
-DB.commit()
+
+# Persistent disk path
+DB_PATH = "/data/auction.db"  # replace with your Render mount path
+SCHEMA_FILE = "schema.sql"
+
+# Ensure directory exists
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
+# Connect to SQLite (file on persistent disk)
+DB = sqlite3.connect(DB_PATH, check_same_thread=False)
+DB.row_factory = sqlite3.Row  # optional, allows dict-like access
+
+
+# Check if tables exist
+def initialize_db():
+    cursor = DB.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='auctions';")
+    table_exists = cursor.fetchone() is not None
+
+    if not table_exists:
+        logger.info("DB empty — initializing schema from schema.sql")
+        with open(SCHEMA_FILE, "r", encoding="utf-8") as f:
+            DB.executescript(f.read())
+        DB.commit()
+    else:
+        logger.info("DB already initialized — skipping schema creation")
+
+initialize_db()
 
 def now() -> int:
     return int(time.time())
@@ -187,6 +212,7 @@ async def handle_bid(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💰 SB: {sb}\n"
         f"🏷 RP: {rp}\n"
         f"➕ Min Inc: {min_inc}\n"
+        f"🛡 Anti-snipe: {anti} min\n\n"
         f"💰 Current bid: <b>{bid}</b>\n"
         f"👤 Bidder: <a href='tg://user?id={msg.from_user.id}'>{bidder_name}</a>\n"
         f"⏱ Ends: <b>{time.strftime('%H:%M:%S', time.localtime(end_time))}</b>"
