@@ -307,16 +307,27 @@ async def handle_summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =====================
 # MAIN
 # =====================
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+async def on_startup(app):
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(check_auctions, "interval", seconds=15, args=[app])
+    scheduler.start()
+
+    app.bot_data["scheduler"] = scheduler
+    logger.info("APScheduler started inside PTB event loop")
+
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = (
+        ApplicationBuilder()
+        .token(BOT_TOKEN)
+        .post_init(on_startup)   # <-- THIS is the fix
+        .build()
+    )
 
     app.add_handler(CommandHandler("summary", handle_summary))
     app.add_handler(MessageHandler(filters.PHOTO & filters.ChatType.GROUPS, handle_newauction))
     app.add_handler(MessageHandler(filters.TEXT, handle_bid))
-
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(check_auctions, "interval", seconds=15, args=[app])
-    scheduler.start()
 
     logger.info("🤖 Auction bot running")
     app.run_polling()
