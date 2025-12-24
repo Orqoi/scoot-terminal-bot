@@ -2,6 +2,8 @@ import sqlite3
 import time
 import re
 import logging
+import os
+from dotenv import load_dotenv
 
 from telegram import Update
 from telegram.ext import (
@@ -17,8 +19,12 @@ from telegram.constants import MessageOriginType
 # =====================
 # CONFIG
 # =====================
+load_dotenv()
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "-1003523098200"))
+CHANNEL_ID = int(os.environ.get("CHANNEL_ID", 0))  # convert to int
+
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN environment variable not set")
 
 # =====================
 # LOGGING
