@@ -15,6 +15,9 @@ from telegram.ext import (
 )
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from telegram.constants import MessageOriginType
+from datetime import datetime, timezone, timedelta
+
+SG_TZ = timezone(timedelta(hours=8))
 
 # =====================
 # CONFIG
@@ -82,7 +85,7 @@ async def handle_newauction(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💰 SB: {sb}\n"
         f"🏷 RP: {rp}\n"
         f"➕ Min Inc: {min_inc}\n"
-        f"⏱ Ends: <b>{time.strftime('%H:%M:%S', time.localtime(end_time))}</b>\n"
+        f"⏱ Ends: <b>{datetime.fromtimestamp(end_time, tz=SG_TZ).strftime('%H:%M:%S')}</b>\n"
         f"🛡 Anti-snipe: {anti} min\n\n"
         f"💬 Comment with a number to bid"
     )
@@ -191,7 +194,7 @@ async def handle_bid(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🛡 Anti-snipe: {anti} min\n\n"
         f"💰 Current bid: <b>{bid}</b>\n"
         f"👤 Bidder: <a href='tg://user?id={msg.from_user.id}'>{bidder_name}</a>\n"
-        f"⏱ Ends: <b>{time.strftime('%H:%M:%S', time.localtime(end_time))}</b>"
+        f"⏱ Ends: <b>{datetime.fromtimestamp(end_time, tz=SG_TZ).strftime('%H:%M:%S')}</b>"
     )
 
     await context.bot.edit_message_caption(
@@ -292,7 +295,7 @@ async def handle_summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💬 <b>{short_desc}</b>\n"
             f"💰 Current bid: <b>{current_bid}</b>\n"
             f"👤 Bidder: {bidder_text}\n"
-            f"⏱ Ends: {time.strftime('%H:%M:%S', time.localtime(end_time))}\n"
+            f"⏱ Ends: {datetime.fromtimestamp(end_time, tz=SG_TZ).strftime('%H:%M:%S')}\n"
         )
 
     summary_text = "\n".join(lines)
