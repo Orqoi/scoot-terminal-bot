@@ -9,5 +9,6 @@ CREATE TABLE IF NOT EXISTS auctions (
     highest_bid INTEGER,
     highest_bidder INTEGER,
     status TEXT,
-    description TEXT
+    description TEXT,
+    title TEXT
 );
