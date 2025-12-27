@@ -41,6 +41,13 @@ def _init_db() -> sqlite3.Connection:
         else:
             candidates.append(env)
 
+    # Prefer persistent Render disk if present
+    try:
+        if os.path.isdir("/data") and os.access("/data", os.W_OK):
+            candidates.insert(0, "/data/auction.db")
+    except Exception:
+        pass
+
     candidates.extend(
         [
             os.path.join(BASE_DIR, "data", "auction.db"),
@@ -50,12 +57,16 @@ def _init_db() -> sqlite3.Connection:
     )
 
     db: Optional[sqlite3.Connection] = None
+    chosen_path = uri_candidate or (candidates[0] if candidates else None)
+
     if uri_candidate:
         db = _connect(uri_candidate, uri=True)
+        chosen_path = uri_candidate
 
     idx = 0
     while db is None and idx < len(candidates):
-        db = _connect(candidates[idx])
+        chosen_path = candidates[idx]
+        db = _connect(chosen_path)
         idx += 1
 
     if db is None:
@@ -64,8 +75,12 @@ def _init_db() -> sqlite3.Connection:
     try:
         db.execute("PRAGMA journal_mode=WAL;")
         db.execute("PRAGMA foreign_keys=ON;")
+        # Log actual DB file path to verify persistence
+        row = db.execute("PRAGMA database_list").fetchone()
+        actual_path = row[2] if row else chosen_path
+        logger.info("SQLite DB active path: %s", actual_path)
     except Exception as e:
-        logger.warning("Failed to set PRAGMAs: %s", e)
+        logger.warning("Failed to set PRAGMAs or log DB path: %s", e)
 
     try:
         cur = db.execute(
