@@ -23,7 +23,6 @@ def _init_db() -> sqlite3.Connection:
         or os.environ.get("DB_PATH")
         or os.environ.get("DATABASE_URL")
     )
-
     logger.info(
         "DB envs: SQLITE_DB_PATH=%s DB_PATH=%s DATABASE_URL=%s",
         os.environ.get("SQLITE_DB_PATH"),
@@ -46,7 +45,13 @@ def _init_db() -> sqlite3.Connection:
         elif env.startswith("sqlite://"):
             candidates.append(env[len("sqlite://") :])
         else:
-            candidates.append(env)
+            # Resolve relative paths to project root (same dir as bot.py)
+            if not os.path.isabs(env):
+                resolved = os.path.join(BASE_DIR, env)
+                logger.info("Resolved relative DB path '%s' -> '%s'", env, resolved)
+                candidates.append(resolved)
+            else:
+                candidates.append(env)
 
     # Prefer persistent Render disk if present
     try:
@@ -54,7 +59,12 @@ def _init_db() -> sqlite3.Connection:
         writable_data = os.access("/data", os.W_OK) if has_data else False
         logger.info("Persistent mount /data present=%s writable=%s", has_data, writable_data)
         if has_data and writable_data:
-            candidates.insert(0, "/data/auction.db")
+            if not env:
+                candidates.insert(0, "/data/auction.db")
+                logger.info("No explicit DB env; preferring persistent /data/auction.db")
+            else:
+                candidates.append("/data/auction.db")
+                logger.info("Explicit DB env set; will use /data as fallback only")
     except Exception as e:
         logger.warning("Persistent mount check failed: %s", e)
 
