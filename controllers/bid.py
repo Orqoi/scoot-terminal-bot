@@ -40,21 +40,18 @@ async def handle_bid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     title, sb, rp, min_inc, end_time, anti, highest, highest_bidder, description = row
 
     if now() > end_time or highest is None:
-        await msg.delete()
         return
 
     if text.lower() == "sb":
         if highest == 0:
             bid = sb
         else:
-            await msg.delete()
             return
     else:
         bid = int(text)
 
     min_valid = sb if highest == 0 else highest + min_inc
     if bid < min_valid:
-        await msg.delete()
         return
 
     if now() >= end_time - anti * 60:

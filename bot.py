@@ -20,14 +20,22 @@ def main():
         .build()
     )
 
-    app.add_handler(CommandHandler("help", handle_help))
-    app.add_handler(CommandHandler("summary", handle_summary))
+    app.add_handler(CommandHandler(
+        "help",
+        handle_help,
+        filters=filters.ChatType.PRIVATE | (filters.ChatType.GROUPS & ~filters.REPLY),
+    ))
+    app.add_handler(CommandHandler(
+        "summary",
+        handle_summary,
+        filters=filters.ChatType.PRIVATE | (filters.ChatType.GROUPS & ~filters.REPLY),
+    ))
     app.add_handler(MessageHandler(
-        filters.PHOTO & filters.ChatType.GROUPS & filters.CaptionRegex(r'^/schedulesa(\s|$)'),
+        filters.PHOTO & filters.ChatType.GROUPS & ~filters.REPLY & filters.CaptionRegex(r'^/schedulesa(\s|$)'),
         handle_scheduleauction
     ))
     app.add_handler(MessageHandler(
-        filters.PHOTO & filters.ChatType.GROUPS & filters.CaptionRegex(r'^/sa(\s|$)'),
+        filters.PHOTO & filters.ChatType.GROUPS & ~filters.REPLY & filters.CaptionRegex(r'^/sa(\s|$)'),
         handle_newauction
     ))
     app.add_handler(MessageHandler(filters.TEXT, handle_bid))
