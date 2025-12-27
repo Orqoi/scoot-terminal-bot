@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS auctions (
     auction_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    channel_post_id INTEGER UNIQUE,
+    channel_post_id INTEGER,
     channel_id INTEGER,
     sb INTEGER,
     rp INTEGER,
@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS auctions (
     title TEXT,
     owner_user_id INTEGER
 );
+-- Ensure config storage for binding
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT

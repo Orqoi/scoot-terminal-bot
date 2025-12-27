@@ -99,8 +99,6 @@ def _init_db() -> sqlite3.Connection:
     # Migration: add columns/indexes if missing
     try:
         cols = {row[1] for row in db.execute("PRAGMA table_info(auctions)").fetchall()}
-
-        # Add channel_id if missing (existing migration)
         if "channel_id" not in cols:
             db.execute("ALTER TABLE auctions ADD COLUMN channel_id INTEGER")
             bound = db.execute("SELECT value FROM settings WHERE key = 'channel_id'").fetchone()
@@ -110,16 +108,53 @@ def _init_db() -> sqlite3.Connection:
                 except Exception:
                     pass
             db.commit()
-
-        # Add owner_user_id for per-auction ownership
         if "owner_user_id" not in cols:
             db.execute("ALTER TABLE auctions ADD COLUMN owner_user_id INTEGER")
             db.commit()
-
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS auctions_channel_message_unique ON auctions(channel_id, channel_post_id)")
         db.commit()
     except Exception as e:
         logger.warning("Schema migration adjustments failed: %s", e)
+
+    # Migration: remove column-level UNIQUE on channel_post_id by table recreation
+    try:
+        ddl_row = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='auctions'").fetchone()
+        ddl_sql = ddl_row[0] if ddl_row else ""
+        if "channel_post_id INTEGER UNIQUE" in ddl_sql:
+            logger.info("Migrating auctions schema to remove column-level UNIQUE on channel_post_id")
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS auctions_mig (
+                    auction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    channel_post_id INTEGER,
+                    channel_id INTEGER,
+                    sb INTEGER,
+                    rp INTEGER,
+                    min_inc INTEGER,
+                    end_time INTEGER,
+                    anti_snipe INTEGER,
+                    highest_bid INTEGER,
+                    highest_bidder INTEGER,
+                    status TEXT,
+                    description TEXT,
+                    title TEXT,
+                    owner_user_id INTEGER
+                )
+            """)
+            db.execute("""
+                INSERT INTO auctions_mig (
+                    auction_id, channel_post_id, channel_id, sb, rp, min_inc, end_time, anti_snipe,
+                    highest_bid, highest_bidder, status, description, title, owner_user_id
+                )
+                SELECT auction_id, channel_post_id, channel_id, sb, rp, min_inc, end_time, anti_snipe,
+                       highest_bid, highest_bidder, status, description, title, owner_user_id
+                FROM auctions
+            """)
+            db.execute("DROP TABLE auctions")
+            db.execute("ALTER TABLE auctions_mig RENAME TO auctions")
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS auctions_channel_message_unique ON auctions(channel_id, channel_post_id)")
+            db.commit()
+    except Exception as e:
+        logger.warning("Unique constraint migration failed: %s", e)
 
     return db
 
