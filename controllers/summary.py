@@ -9,13 +9,19 @@ async def handle_summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not msg:
         return
 
+    channel_id = context.application.bot_data.get("channel_id")
+    if not channel_id:
+        await msg.reply_text("❌ No channel bound. Use /bind in private chat.")
+        return
+
     rows = DB.execute(
         """
         SELECT title, description, sb, highest_bid, highest_bidder, end_time
         FROM auctions
-        WHERE status = 'LIVE'
+        WHERE status = 'LIVE' AND channel_id = ?
         ORDER BY end_time ASC
-        """
+        """,
+        (channel_id,),
     ).fetchall()
 
     if not rows:
@@ -41,11 +47,6 @@ async def handle_summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"👤 {bidder_text}\n"
             f"⏱ Ends: {datetime.fromtimestamp(end_time, tz=SG_TZ).strftime('%Y-%m-%d %H:%M')}\n"
         )
-
-    channel_id = context.application.bot_data.get("channel_id")
-    if not channel_id:
-        await msg.reply_text("❌ No channel bound. Use /bind in private chat.")
-        return
 
     await context.bot.send_message(
         chat_id=channel_id,
