@@ -117,12 +117,9 @@ def _init_db() -> sqlite3.Connection:
         if "photo_file_id" not in cols:
             db.execute("ALTER TABLE auctions ADD COLUMN photo_file_id TEXT")
             db.commit()
-        # Add reply anchor columns for end-of-auction notifications
-        if "reply_chat_id" not in cols:
-            db.execute("ALTER TABLE auctions ADD COLUMN reply_chat_id INTEGER")
-            db.commit()
-        if "reply_message_id" not in cols:
-            db.execute("ALTER TABLE auctions ADD COLUMN reply_message_id INTEGER")
+        # Single-column reply anchor "chat_id:message_id"
+        if "reply_anchor" not in cols:
+            db.execute("ALTER TABLE auctions ADD COLUMN reply_anchor TEXT")
             db.commit()
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS auctions_channel_message_unique ON auctions(channel_id, channel_post_id)")
         db.commit()

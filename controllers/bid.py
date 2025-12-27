@@ -59,15 +59,14 @@ async def handle_bid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     DB.execute(
         """
         UPDATE auctions
-        SET highest_bid = ?, highest_bidder = ?, end_time = ?, reply_chat_id = ?, reply_message_id = ?
+        SET highest_bid = ?, highest_bidder = ?, end_time = ?, reply_anchor = ?
         WHERE channel_id = ? AND channel_post_id = ?
         """,
         (
             bid,
             msg.from_user.id,
             end_time,
-            msg.chat.id,                      # bidding group
-            msg.reply_to_message.message_id,  # forwarded post anchor in group
+            f"{msg.chat.id}:{msg.message_id}",  # winner reply target (chat_id:message_id)
             channel_id_row,
             channel_post_id,
         ),
