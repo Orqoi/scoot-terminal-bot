@@ -6,7 +6,8 @@ from datetime import timezone, timedelta
 load_dotenv()
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-CHANNEL_ID = int(os.environ.get("CHANNEL_ID", 0))
+BIND_SECRET = os.environ.get("BIND_SECRET")
+DEFAULT_CHANNEL_ID = int(os.environ.get("CHANNEL_ID", 0))
 
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN environment variable not set")

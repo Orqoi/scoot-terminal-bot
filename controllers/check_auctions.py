@@ -1,19 +1,18 @@
 from telegram.ext import Application
-from config.settings import CHANNEL_ID
 from db.connection import DB
 from utils.time import now
 
 async def check_auctions(app: Application):
     rows = DB.execute(
         """
-        SELECT auction_id, channel_post_id, title, rp, highest_bid, highest_bidder, description
+        SELECT auction_id, channel_id, channel_post_id, title, rp, highest_bid, highest_bidder, description
         FROM auctions
         WHERE status = 'LIVE' AND end_time <= ?
         """,
         (now(),),
     ).fetchall()
 
-    for auction_id, post_id, title, rp, bid, bidder, description in rows:
+    for auction_id, chan_id, post_id, title, rp, bid, bidder, description in rows:
         DB.execute(
             "UPDATE auctions SET status = 'ENDED' WHERE auction_id = ?",
             (auction_id,),
@@ -37,7 +36,7 @@ async def check_auctions(app: Application):
             )
 
         await app.bot.edit_message_caption(
-            chat_id=CHANNEL_ID,
+            chat_id=chan_id,
             message_id=post_id,
             caption=caption,
             parse_mode="HTML",

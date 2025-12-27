@@ -82,6 +82,30 @@ def _init_db() -> sqlite3.Connection:
         logger.error("Failed to apply schema: %s", e)
         raise
 
+    # Ensure settings table exists even on already-initialized DBs
+    try:
+        db.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
+        db.commit()
+    except Exception as e:
+        logger.error("Failed to ensure settings table: %s", e)
+
+    # Migration: add channel_id column and composite unique index if missing
+    try:
+        cols = {row[1] for row in db.execute("PRAGMA table_info(auctions)").fetchall()}
+        if "channel_id" not in cols:
+            db.execute("ALTER TABLE auctions ADD COLUMN channel_id INTEGER")
+            bound = db.execute("SELECT value FROM settings WHERE key = 'channel_id'").fetchone()
+            if bound and bound[0].strip():
+                try:
+                    db.execute("UPDATE auctions SET channel_id = ?", (int(bound[0]),))
+                except Exception:
+                    pass
+            db.commit()
+        db.execute("CREATE UNIQUE INDEX IF NOT EXISTS auctions_channel_message_unique ON auctions(channel_id, channel_post_id)")
+        db.commit()
+    except Exception as e:
+        logger.warning("Channel ID migration failed: %s", e)
+
     return db
 
 

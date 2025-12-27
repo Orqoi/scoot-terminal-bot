@@ -8,21 +8,25 @@ async def handle_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
         "ℹ️ <b>Auction Bot Help</b>\n\n"
+        "<b>Bind Channel</b>\n"
+        "- /bind &lt;channel_id or @username&gt; &lt;secret&gt; — send in private chat.\n"
+        "- Or reply to a forwarded channel post with '/bind &lt;secret&gt;'.\n"
+        "- Configure <code>BIND_SECRET</code> in <code>.env</code>.\n\n"
         "<b>Create Auction</b>\n"
+        'Send a photo to me (private) with caption:\n'
         '/sa "Title" SB RP MinInc DurationOrEnd AntiSnipeMin "Description"\n'
         "- DurationOrEnd: minutes (e.g., 60) or datetime YYYY-MM-DD HH:MM\n"
         "- Example: /sa \"Cat shirt\" 10 100 5 60 1 \"Cotton tee\"\n\n"
         "<b>Schedule Auction</b>\n"
+        'Send a photo to me (private) with caption:\n'
         '/schedulesa "Title" SB RP MinInc "StartTime" DurationOrEnd AntiSnipeMin "Description"\n'
         '- StartTime: "YYYY-MM-DD HH:MM"\n'
-        "- DurationOrEnd: minutes (e.g., 60) or datetime YYYY-MM-DD HH:MM\n"
-        '- Example: /schedulesa "LV Bag" 10 100 5 "2025-12-27 17:20" 60 1 "Vintage bag"\n\n'
+        "- DurationOrEnd: minutes (e.g., 60) or datetime YYYY-MM-DD HH:MM\n\n"
         "<b>Bid</b>\n"
-        "- Reply to the forwarded channel post in the group.\n"
-        "- Send a number (your bid) or 'SB'.\n"
-        "- 'SB' places the minimum valid next bid.\n\n"
+        "- In the group, reply to the forwarded channel post.\n"
+        "- Send a number (your bid) or 'SB'.\n\n"
         "<b>Summary</b>\n"
-        "- /summary — posts a summary of live auctions to the channel.\n"
+        "- Send /summary in private — posts a summary to the bound channel.\n"
     )
 
     await msg.reply_text(text, parse_mode="HTML", disable_web_page_preview=True)

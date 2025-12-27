@@ -1,7 +1,7 @@
 from datetime import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
-from config.settings import CHANNEL_ID, SG_TZ
+from config.settings import SG_TZ
 from db.connection import DB
 
 async def handle_summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -42,8 +42,13 @@ async def handle_summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"⏱ Ends: {datetime.fromtimestamp(end_time, tz=SG_TZ).strftime('%Y-%m-%d %H:%M')}\n"
         )
 
+    channel_id = context.application.bot_data.get("channel_id")
+    if not channel_id:
+        await msg.reply_text("❌ No channel bound. Use /bind in private chat.")
+        return
+
     await context.bot.send_message(
-        chat_id=CHANNEL_ID,
+        chat_id=channel_id,
         text="\n".join(lines),
         parse_mode="HTML",
         disable_web_page_preview=True,

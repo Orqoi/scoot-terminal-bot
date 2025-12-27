@@ -3,7 +3,7 @@ from datetime import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from telegram import Update
 from telegram.ext import ContextTypes
-from config.settings import CHANNEL_ID, SG_TZ
+from config.settings import SG_TZ
 from db.connection import DB
 from utils.time import parse_end_time
 
@@ -45,6 +45,11 @@ async def handle_scheduleauction(update: Update, context: ContextTypes.DEFAULT_T
 
     photo_id = msg.photo[-1].file_id
 
+    channel_id = context.application.bot_data.get("channel_id")
+    if not channel_id:
+        await msg.reply_text("❌ No channel bound. Use /bind in private chat.")
+        return
+
     scheduler: AsyncIOScheduler = context.application.bot_data["scheduler"]
 
     async def post_auction():
@@ -60,7 +65,7 @@ async def handle_scheduleauction(update: Update, context: ContextTypes.DEFAULT_T
         )
 
         sent = await context.bot.send_photo(
-            chat_id=CHANNEL_ID,
+            chat_id=channel_id,
             photo=photo_id,
             caption=caption_text,
             parse_mode="HTML",
@@ -69,6 +74,7 @@ async def handle_scheduleauction(update: Update, context: ContextTypes.DEFAULT_T
         DB.execute(
             """
             INSERT INTO auctions (
+                channel_id,
                 channel_post_id,
                 title,
                 sb,
@@ -81,9 +87,10 @@ async def handle_scheduleauction(update: Update, context: ContextTypes.DEFAULT_T
                 status,
                 description
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL, 'LIVE', ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 'LIVE', ?)
             """,
             (
+                channel_id,
                 sent.message_id,
                 title,
                 sb,

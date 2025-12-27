@@ -3,7 +3,7 @@ from datetime import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import MessageOriginType
-from config.settings import CHANNEL_ID, SG_TZ
+from config.settings import SG_TZ
 from db.connection import DB
 from utils.time import now
 
@@ -20,24 +20,22 @@ async def handle_bid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not origin or origin.type != MessageOriginType.CHANNEL:
         return
 
-    if origin.chat.id != CHANNEL_ID:
-        return
-
     channel_post_id = origin.message_id
+    origin_channel_id = origin.chat.id
 
     row = DB.execute(
         """
-        SELECT title, sb, rp, min_inc, end_time, anti_snipe, highest_bid, highest_bidder, description
+        SELECT channel_id, title, sb, rp, min_inc, end_time, anti_snipe, highest_bid, highest_bidder, description
         FROM auctions
-        WHERE channel_post_id = ?
+        WHERE channel_id = ? AND channel_post_id = ?
         """,
-        (channel_post_id,),
+        (origin_channel_id, channel_post_id),
     ).fetchone()
 
     if not row:
         return
 
-    title, sb, rp, min_inc, end_time, anti, highest, highest_bidder, description = row
+    channel_id_row, title, sb, rp, min_inc, end_time, anti, highest, highest_bidder, description = row
 
     if now() > end_time or highest is None:
         return
@@ -82,7 +80,7 @@ async def handle_bid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await context.bot.edit_message_caption(
-        chat_id=CHANNEL_ID,
+        chat_id=channel_id_row,
         message_id=channel_post_id,
         caption=new_caption,
         parse_mode="HTML",
