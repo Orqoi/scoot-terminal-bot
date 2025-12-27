@@ -39,9 +39,12 @@ async def handle_newauction(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo_id = msg.photo[-1].file_id
     end_time = parse_end_time(duration_or_end)
 
-    channel_id = context.application.bot_data.get("channel_id")
+    # Per-user binding lookup ONLY
+    row = DB.execute("SELECT channel_id FROM bindings WHERE user_id = ?", (msg.from_user.id,)).fetchone()
+    channel_id = row[0] if row else None
+
     if not channel_id:
-        await msg.reply_text("❌ No channel bound. Use /bind in private chat.")
+        await msg.reply_text("❌ No channel bound for you. Use /bind in private chat.")
         return
 
     caption_text = (
@@ -76,9 +79,10 @@ async def handle_newauction(update: Update, context: ContextTypes.DEFAULT_TYPE):
             highest_bid,
             highest_bidder,
             status,
-            description
+            description,
+            owner_user_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 'LIVE', ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 'LIVE', ?, ?)
         """,
         (
             channel_id,
@@ -90,6 +94,7 @@ async def handle_newauction(update: Update, context: ContextTypes.DEFAULT_TYPE):
             end_time,
             anti,
             description,
+            msg.from_user.id,
         ),
     )
     DB.commit()

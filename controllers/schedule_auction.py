@@ -45,12 +45,17 @@ async def handle_scheduleauction(update: Update, context: ContextTypes.DEFAULT_T
 
     photo_id = msg.photo[-1].file_id
 
-    channel_id = context.application.bot_data.get("channel_id")
+    # Per-user binding lookup ONLY
+    row = DB.execute("SELECT channel_id FROM bindings WHERE user_id = ?", (msg.from_user.id,)).fetchone()
+    channel_id = row[0] if row else None
+
     if not channel_id:
-        await msg.reply_text("❌ No channel bound. Use /bind in private chat.")
+        await msg.reply_text("❌ No channel bound for you. Use /bind in private chat.")
         return
 
     scheduler: AsyncIOScheduler = context.application.bot_data["scheduler"]
+
+    owner = msg.from_user.id
 
     async def post_auction():
         caption_text = (
@@ -85,9 +90,10 @@ async def handle_scheduleauction(update: Update, context: ContextTypes.DEFAULT_T
                 highest_bid,
                 highest_bidder,
                 status,
-                description
+                description,
+                owner_user_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 'LIVE', ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 'LIVE', ?, ?)
             """,
             (
                 channel_id,
@@ -99,6 +105,7 @@ async def handle_scheduleauction(update: Update, context: ContextTypes.DEFAULT_T
                 end_time,
                 anti,
                 description,
+                owner,
             ),
         )
         DB.commit()

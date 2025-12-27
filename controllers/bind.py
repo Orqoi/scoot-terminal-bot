@@ -13,13 +13,11 @@ async def handle_bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (msg.text or "").strip()
     tokens = text.split()
 
-    # Require BIND_SECRET to be configured
     from config.settings import BIND_SECRET
     if not BIND_SECRET:
         await msg.reply_text("❌ Binding disabled. Set BIND_SECRET in .env.")
         return
 
-    # Determine if binding via forwarded post or direct args
     forwarded = (
         msg.reply_to_message
         and msg.reply_to_message.forward_origin
@@ -28,9 +26,9 @@ async def handle_bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     channel_id = None
     secret = None
+    user_id = msg.from_user.id
 
     if forwarded:
-        # Expect: /bind <secret> while replying to a forwarded channel post
         if len(tokens) >= 2:
             secret = tokens[1]
         else:
@@ -38,7 +36,6 @@ async def handle_bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         channel_id = msg.reply_to_message.forward_origin.chat.id
     else:
-        # Expect: /bind <channel_id or @username> <secret> in private chat
         if len(tokens) >= 3:
             channel_arg = tokens[1]
             secret = tokens[2]
@@ -60,17 +57,15 @@ async def handle_bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await msg.reply_text("Usage: /bind <channel_id or @username> <secret>\nOr reply to a forwarded channel post with '/bind <secret>'.")
             return
 
-    # Validate secret
     if secret != BIND_SECRET:
         await msg.reply_text("❌ Invalid secret.")
         return
 
     try:
-        DB.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('channel_id', ?)", (str(channel_id),))
+        DB.execute("INSERT OR REPLACE INTO bindings (user_id, channel_id) VALUES (?, ?)", (user_id, channel_id))
         DB.commit()
-        context.application.bot_data["channel_id"] = channel_id
-        await msg.reply_text(f"✅ Bound channel: {channel_id}")
-        logger.info("Channel bound to %s", channel_id)
+        await msg.reply_text(f"✅ Bound channel for you: {channel_id}")
+        logger.info("User %s bound to channel %s", user_id, channel_id)
     except Exception as e:
         await msg.reply_text("❌ Failed to bind channel. Try again.")
-        logger.warning("Failed to bind channel: %s", e)
+        logger.warning("Failed to bind channel for user %s: %s", user_id, e)

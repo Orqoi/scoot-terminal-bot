@@ -89,9 +89,18 @@ def _init_db() -> sqlite3.Connection:
     except Exception as e:
         logger.error("Failed to ensure settings table: %s", e)
 
-    # Migration: add channel_id column and composite unique index if missing
+    # Create bindings table for per-user channel binding
+    try:
+        db.execute("CREATE TABLE IF NOT EXISTS bindings (user_id INTEGER PRIMARY KEY, channel_id INTEGER)")
+        db.commit()
+    except Exception as e:
+        logger.error("Failed to ensure bindings table: %s", e)
+
+    # Migration: add columns/indexes if missing
     try:
         cols = {row[1] for row in db.execute("PRAGMA table_info(auctions)").fetchall()}
+
+        # Add channel_id if missing (existing migration)
         if "channel_id" not in cols:
             db.execute("ALTER TABLE auctions ADD COLUMN channel_id INTEGER")
             bound = db.execute("SELECT value FROM settings WHERE key = 'channel_id'").fetchone()
@@ -101,10 +110,16 @@ def _init_db() -> sqlite3.Connection:
                 except Exception:
                     pass
             db.commit()
+
+        # Add owner_user_id for per-auction ownership
+        if "owner_user_id" not in cols:
+            db.execute("ALTER TABLE auctions ADD COLUMN owner_user_id INTEGER")
+            db.commit()
+
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS auctions_channel_message_unique ON auctions(channel_id, channel_post_id)")
         db.commit()
     except Exception as e:
-        logger.warning("Channel ID migration failed: %s", e)
+        logger.warning("Schema migration adjustments failed: %s", e)
 
     return db
 
