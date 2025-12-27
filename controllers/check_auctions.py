@@ -20,8 +20,11 @@ async def check_auctions(app: Application):
         DB.commit()
 
         if bid >= rp and bidder:
-            user = await app.bot.get_chat(bidder)
-            bidder_name = user.first_name or "User"
+            try:
+                user = await app.bot.get_chat(bidder)
+                bidder_name = user.first_name or "User"
+            except Exception:
+                bidder_name = "User"
             caption = (
                 f"🏁 <b>{title} — Auction Ended</b>\n\n"
                 f"{description}\n\n"
@@ -41,3 +44,20 @@ async def check_auctions(app: Application):
             caption=caption,
             parse_mode="HTML",
         )
+
+        # Comment in the discussion thread tagging the winner (if any)
+        if bid >= rp and bidder:
+            try:
+                channel = await app.bot.get_chat(chan_id)
+                discussion_id = getattr(channel, "linked_chat_id", None)
+                if discussion_id:
+                    await app.bot.send_message(
+                        chat_id=discussion_id,
+                        message_thread_id=post_id,
+                        text=f"🏆 Winner: <a href='tg://user?id={bidder}'>{bidder_name}</a> with bid <b>{bid}</b>",
+                        parse_mode="HTML",
+                        disable_web_page_preview=True,
+                    )
+            except Exception:
+                # Silently skip if no linked group or insufficient permissions
+                pass
