@@ -24,6 +24,13 @@ def _init_db() -> sqlite3.Connection:
         or os.environ.get("DATABASE_URL")
     )
 
+    logger.info(
+        "DB envs: SQLITE_DB_PATH=%s DB_PATH=%s DATABASE_URL=%s",
+        os.environ.get("SQLITE_DB_PATH"),
+        os.environ.get("DB_PATH"),
+        os.environ.get("DATABASE_URL"),
+    )
+
     uri_candidate = None
     candidates = []
 
@@ -43,10 +50,13 @@ def _init_db() -> sqlite3.Connection:
 
     # Prefer persistent Render disk if present
     try:
-        if os.path.isdir("/data") and os.access("/data", os.W_OK):
+        has_data = os.path.isdir("/data")
+        writable_data = os.access("/data", os.W_OK) if has_data else False
+        logger.info("Persistent mount /data present=%s writable=%s", has_data, writable_data)
+        if has_data and writable_data:
             candidates.insert(0, "/data/auction.db")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Persistent mount check failed: %s", e)
 
     candidates.extend(
         [
@@ -55,9 +65,11 @@ def _init_db() -> sqlite3.Connection:
             ":memory:",
         ]
     )
+    logger.debug("DB candidate order: uri_candidate=%s candidates=%s", uri_candidate, candidates)
 
     db: Optional[sqlite3.Connection] = None
     chosen_path = uri_candidate or (candidates[0] if candidates else None)
+    logger.info("DB connect: initial candidate=%s", chosen_path)
 
     if uri_candidate:
         db = _connect(uri_candidate, uri=True)
@@ -66,16 +78,19 @@ def _init_db() -> sqlite3.Connection:
     idx = 0
     while db is None and idx < len(candidates):
         chosen_path = candidates[idx]
+        logger.debug("DB connect attempt %d: %s", idx + 1, chosen_path)
         db = _connect(chosen_path)
         idx += 1
 
     if db is None:
+        logger.error("DB connection failed after %d attempts", idx)
         raise RuntimeError("Failed to initialize sqlite database")
+    else:
+        logger.info("DB connection established")
 
     try:
         db.execute("PRAGMA journal_mode=WAL;")
         db.execute("PRAGMA foreign_keys=ON;")
-        # Log actual DB file path to verify persistence
         row = db.execute("PRAGMA database_list").fetchone()
         actual_path = row[2] if row else chosen_path
         logger.info("SQLite DB active path: %s", actual_path)
