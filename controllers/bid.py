@@ -16,12 +16,25 @@ async def handle_bid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not (re.fullmatch(r"\d+", text) or text.lower() == "sb"):
         return
 
-    origin = msg.reply_to_message.forward_origin
-    if not origin or origin.type != MessageOriginType.CHANNEL:
+    origin_msg = msg.reply_to_message
+    origin = origin_msg.forward_origin
+
+    channel_post_id = None
+    origin_channel_id = None
+
+    if origin and origin.type == MessageOriginType.CHANNEL:
+        # Standard forwarded channel post
+        channel_post_id = origin.message_id
+        origin_channel_id = origin.chat.id
+    elif getattr(origin_msg, "is_automatic_forward", False) and origin_msg.sender_chat:
+        # Linked discussion group auto-forward; use sender_chat and thread id
+        origin_channel_id = origin_msg.sender_chat.id
+        channel_post_id = getattr(origin_msg, "message_thread_id", None)
+    else:
         return
 
-    channel_post_id = origin.message_id
-    origin_channel_id = origin.chat.id
+    if not origin_channel_id or not channel_post_id:
+        return
 
     row = DB.execute(
         """
@@ -31,13 +44,15 @@ async def handle_bid(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """,
         (origin_channel_id, channel_post_id),
     ).fetchone()
-
     if not row:
         return
 
     channel_id_row, title, sb, rp, min_inc, end_time, anti, highest, highest_bidder, description = row
 
-    if now() > end_time or highest is None:
+    # Treat NULL highest_bid as 0 for legacy rows
+    highest = highest if highest is not None else 0
+
+    if now() > end_time:
         return
 
     if text.lower() == "sb":
@@ -66,7 +81,7 @@ async def handle_bid(update: Update, context: ContextTypes.DEFAULT_TYPE):
             bid,
             msg.from_user.id,
             end_time,
-            f"{msg.chat.id}:{msg.message_id}",  # winner reply target (chat_id:message_id)
+            f"{msg.chat.id}:{msg.message_id}",
             channel_id_row,
             channel_post_id,
         ),
