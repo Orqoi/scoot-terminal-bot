@@ -117,6 +117,13 @@ def _init_db() -> sqlite3.Connection:
         if "photo_file_id" not in cols:
             db.execute("ALTER TABLE auctions ADD COLUMN photo_file_id TEXT")
             db.commit()
+        # Add bid-context columns for reliable winner notifications
+        if "last_bid_group_id" not in cols:
+            db.execute("ALTER TABLE auctions ADD COLUMN last_bid_group_id INTEGER")
+            db.commit()
+        if "last_forwarded_message_id" not in cols:
+            db.execute("ALTER TABLE auctions ADD COLUMN last_forwarded_message_id INTEGER")
+            db.commit()
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS auctions_channel_message_unique ON auctions(channel_id, channel_post_id)")
         db.commit()
     except Exception as e:
