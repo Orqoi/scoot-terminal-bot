@@ -10,7 +10,16 @@ SCHEMA_PATH = os.path.join(BASE_DIR, "schema.sql")
 def _connect(candidate: str, *, uri: bool = False) -> Optional[sqlite3.Connection]:
     try:
         if candidate != ":memory:" and not uri:
-            os.makedirs(os.path.dirname(candidate), exist_ok=True)
+            dir_path = os.path.dirname(candidate)
+            # Do not attempt to create persistent mount directories; they must be attached by the platform.
+            if dir_path.startswith("/data"):
+                if not (os.path.isdir(dir_path) and os.access(dir_path, os.W_OK | os.X_OK)):
+                    logger.warning("DB directory not writable or missing: %s", dir_path)
+                    raise PermissionError(f"DB directory not writable: {dir_path}")
+            else:
+                if dir_path and not os.path.exists(dir_path):
+                    logger.debug("Creating DB directory: %s", dir_path)
+                    os.makedirs(dir_path, exist_ok=True)
         return sqlite3.connect(candidate, check_same_thread=False, uri=uri)
     except Exception as e:
         logger.warning("DB connect failed for %s: %s", candidate, e)
@@ -18,17 +27,8 @@ def _connect(candidate: str, *, uri: bool = False) -> Optional[sqlite3.Connectio
 
 
 def _init_db() -> sqlite3.Connection:
-    env = (
-        os.environ.get("SQLITE_DB_PATH")
-        or os.environ.get("DB_PATH")
-        or os.environ.get("DATABASE_URL")
-    )
-    logger.info(
-        "DB envs: SQLITE_DB_PATH=%s DB_PATH=%s DATABASE_URL=%s",
-        os.environ.get("SQLITE_DB_PATH"),
-        os.environ.get("DB_PATH"),
-        os.environ.get("DATABASE_URL"),
-    )
+    env = os.environ.get("SQLITE_DB_PATH")
+    logger.info("DB env: SQLITE_DB_PATH=%s", env)
 
     uri_candidate = None
     candidates = []
@@ -40,41 +40,18 @@ def _init_db() -> sqlite3.Connection:
             candidates.append(":memory:")
         elif env.startswith("file:"):
             uri_candidate = env
-        elif env.startswith("sqlite:///"):
-            candidates.append(env[len("sqlite:///") :])
-        elif env.startswith("sqlite://"):
-            candidates.append(env[len("sqlite://") :])
         else:
-            # Resolve relative paths to project root (same dir as bot.py)
+            # Resolve relative paths to project root (same root as bot.py)
             if not os.path.isabs(env):
                 resolved = os.path.join(BASE_DIR, env)
                 logger.info("Resolved relative DB path '%s' -> '%s'", env, resolved)
                 candidates.append(resolved)
             else:
                 candidates.append(env)
+    else:
+        # Default to project-local file for dev if no env provided
+        candidates.append(os.path.join(BASE_DIR, "data", "auction.db"))
 
-    # Prefer persistent Render disk if present
-    try:
-        has_data = os.path.isdir("/data")
-        writable_data = os.access("/data", os.W_OK) if has_data else False
-        logger.info("Persistent mount /data present=%s writable=%s", has_data, writable_data)
-        if has_data and writable_data:
-            if not env:
-                candidates.insert(0, "/data/auction.db")
-                logger.info("No explicit DB env; preferring persistent /data/auction.db")
-            else:
-                candidates.append("/data/auction.db")
-                logger.info("Explicit DB env set; will use /data as fallback only")
-    except Exception as e:
-        logger.warning("Persistent mount check failed: %s", e)
-
-    candidates.extend(
-        [
-            os.path.join(BASE_DIR, "data", "auction.db"),
-            "/tmp/auction.db",
-            ":memory:",
-        ]
-    )
     logger.debug("DB candidate order: uri_candidate=%s candidates=%s", uri_candidate, candidates)
 
     db: Optional[sqlite3.Connection] = None
