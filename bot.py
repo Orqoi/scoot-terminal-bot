@@ -11,6 +11,8 @@ from controllers.bid import handle_bid
 from controllers.summary import handle_summary
 from controllers.help import handle_help
 from controllers.bind import handle_bind
+from controllers.view_schedule import handle_view_schedule
+from controllers.cancel import handle_cancel
 from setups.scheduler import on_startup
 
 def main():
@@ -34,6 +36,16 @@ def main():
     app.add_handler(CommandHandler(
         "bind",
         handle_bind,
+        filters=filters.ChatType.PRIVATE,
+    ))
+    app.add_handler(CommandHandler(
+        "viewschedule",
+        handle_view_schedule,
+        filters=filters.ChatType.PRIVATE,
+    ))
+    app.add_handler(CommandHandler(
+        "cancel",
+        handle_cancel,
         filters=filters.ChatType.PRIVATE,
     ))
     app.add_handler(MessageHandler(

@@ -111,6 +111,12 @@ def _init_db() -> sqlite3.Connection:
         if "owner_user_id" not in cols:
             db.execute("ALTER TABLE auctions ADD COLUMN owner_user_id INTEGER")
             db.commit()
+        if "start_time" not in cols:
+            db.execute("ALTER TABLE auctions ADD COLUMN start_time INTEGER")
+            db.commit()
+        if "photo_file_id" not in cols:
+            db.execute("ALTER TABLE auctions ADD COLUMN photo_file_id TEXT")
+            db.commit()
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS auctions_channel_message_unique ON auctions(channel_id, channel_post_id)")
         db.commit()
     except Exception as e:
@@ -137,16 +143,18 @@ def _init_db() -> sqlite3.Connection:
                     status TEXT,
                     description TEXT,
                     title TEXT,
+                    start_time INTEGER,
+                    photo_file_id TEXT,
                     owner_user_id INTEGER
                 )
             """)
             db.execute("""
                 INSERT INTO auctions_mig (
                     auction_id, channel_post_id, channel_id, sb, rp, min_inc, end_time, anti_snipe,
-                    highest_bid, highest_bidder, status, description, title, owner_user_id
+                    highest_bid, highest_bidder, status, description, title, start_time, photo_file_id, owner_user_id
                 )
                 SELECT auction_id, channel_post_id, channel_id, sb, rp, min_inc, end_time, anti_snipe,
-                       highest_bid, highest_bidder, status, description, title, owner_user_id
+                       highest_bid, highest_bidder, status, description, title, start_time, photo_file_id, owner_user_id
                 FROM auctions
             """)
             db.execute("DROP TABLE auctions")

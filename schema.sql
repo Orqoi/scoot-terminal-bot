@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS auctions (
     status TEXT,
     description TEXT,
     title TEXT,
+    start_time INTEGER,
+    photo_file_id TEXT,
     owner_user_id INTEGER
 );
 -- Ensure config storage for binding

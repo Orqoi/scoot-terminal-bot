@@ -22,6 +22,10 @@ async def handle_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         '/schedulesa "Title" SB RP MinInc "StartTime" DurationOrEnd AntiSnipeMin "Description"\n'
         '- StartTime: "YYYY-MM-DD HH:MM"\n'
         "- DurationOrEnd: minutes (e.g., 60) or datetime YYYY-MM-DD HH:MM\n\n"
+        "<b>View Schedule</b>\n"
+        "- /viewschedule — lists your scheduled auctions with IDs.\n\n"
+        "<b>Cancel Scheduled</b>\n"
+        "- /cancel &lt;auction_id&gt; — deletes your scheduled auction.\n\n"
         "<b>Bid</b>\n"
         "- In the group, reply to the forwarded channel post.\n"
         "- Send a number (your bid) or 'SB'.\n\n"
